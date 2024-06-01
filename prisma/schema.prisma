@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  fullname  String
+  email     String   @unique
+  password  String
+  threads   Thread[]
+  profile   Profile?
+  like      Like[]   @relation("user")
+  follower  Follow[] @relation("follower")
+  following Follow[] @relation("following")
+}
+
+model Thread {
+  id          Int           @id @default(autoincrement())
+  content     String?
+  postedAt    DateTime      @default(now())
+  author      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  threadId    Int?
+  like        Like[]        @relation("thread")
+  parent      Thread?       @relation("ReplyThread", fields: [threadId], references: [id])
+  replies     Thread[]      @relation("ReplyThread")
+  ThreadImage ThreadImage[]
+}
+
+model ThreadImage {
+  id       Int    @id @default(autoincrement())
+  image    String
+  threadId Int
+  thread   Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  id     Int     @id @default(autoincrement())
+  avatar String?
+  bio    String?
+  cover  String?
+  userId Int     @unique
+  user   User    @relation(fields: [userId], references: [id])
+}
+
+model Follow {
+  followerId  Int
+  followingId Int
+
+  follower  User @relation("follower", fields: [followerId], references: [id])
+  following User @relation("following", fields: [followingId], references: [id])
+
+  @@id([followerId, followingId])
+}
+
+model Like {
+  userId   Int
+  threadId Int
+  user     User   @relation("user", fields: [userId], references: [id])
+  thread   Thread @relation("thread", fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, userId])
+}

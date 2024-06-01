@@ -1,0 +1,116 @@
+thread 👌
+user 👌
+profile 
+like 
+follow 
+
+for (const file of files.image) {
+      const cloudinaryResponse = await cloudinary.uploader.upload(file.path, {
+        resource_type: "auto",
+      });
+
+      if (cloudinaryResponse) {
+        await db.threadImage.createMany({
+          data: {
+            image: cloudinaryResponse.secure_url,
+            threadId: thread.id,
+          },
+        });
+      }
+      console.log(cloudinaryResponse);
+    }
+
+
+    cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET_KEY,
+});
+
+
+
+// setup cloudinary 
+
+static async createThread(req: Request, res: Response) {
+    try {
+      const { body } = req;
+      body.userId = res.locals.user;
+
+      let imageUrl: string[] = [];
+
+      if (req.files) {
+        const images = req.files as {
+          [fieldname: string]: Express.Multer.File[];
+        };
+
+        for (const fieldName in images) {
+          const fieldFiles = images[fieldName];
+          for (const file of fieldFiles) {
+            const cloudinaryResponse = await cloudinary.uploader.upload(
+              file.path,
+              {
+                resource_type: "auto",
+              }
+            );
+
+            if (cloudinaryResponse) {
+              imageUrl.push(cloudinaryResponse.secure_url);
+            }
+          }
+        }
+      }
+
+      console.log(body);
+      console.log(req.files);
+
+      const thread = await ThreadService.createThread(
+        body,
+        req.files as { [fieldname: string]: Express.Multer.File[] }
+      );
+
+      res
+        .status(200)
+        .json({ message: "Thread created successfully", data: thread });
+    } catch (error) {
+      const err = error as unknown as Error;
+      res.status(500).json({ message: err.message, status: false });
+    }
+  }
+
+  //update profile
+  static async updateProfile(req: Request, res: Response) {
+    try {
+      const userId = res.locals.user;
+      const { body } = req;
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+      if (files.cover && files.cover.length > 0) {
+        const coverResult = await cloudinary.uploader.upload(
+          files.cover[0].path
+        );
+        if (coverResult && coverResult.secure_url) {
+          body.cover = coverResult.secure_url;
+        }
+      }
+
+      if (files.avatar && files.avatar.length > 0) {
+        const avatarResult = await cloudinary.uploader.upload(
+          files.avatar[0].path
+        );
+        if (avatarResult && avatarResult.secure_url) {
+          body.avatar = avatarResult.secure_url;
+        }
+      }
+
+      // Update profile with new cover and avatar URLs
+      await ProfileService.updateProfile(userId, body);
+
+      res.status(200).json({
+        status: true,
+        message: "success",
+      });
+    } catch (error) {
+      const err = error as unknown as Error;
+      res.status(500).json({ message: err.message, status: false });
+    }
+  }
